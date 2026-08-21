@@ -16,8 +16,12 @@ As a plugin, with updates through the marketplace:
 
 ```
 /plugin marketplace add spacecatninja/imager-x-skills
-/plugin install imager-x@spacecatninja/imager-x-skills
+/plugin install imager-x@imager-x-skills
 ```
+
+Claude Code keeps auto-update off for third-party marketplaces, so pull new versions with
+`/plugin marketplace update imager-x-skills`, or turn auto-update on under `/plugin` →
+Marketplaces.
 
 Or clone and symlink into `~/.claude/skills/`:
 
