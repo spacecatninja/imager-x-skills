@@ -1,0 +1,55 @@
+name: Release validation
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check versions match the tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PLUGIN=$(jq -r '.version' .claude-plugin/plugin.json)
+          MARKET_META=$(jq -r '.metadata.version' .claude-plugin/marketplace.json)
+          MARKET_PLUGIN=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
+
+          echo "tag=$TAG plugin.json=$PLUGIN marketplace.metadata=$MARKET_META marketplace.plugins[0]=$MARKET_PLUGIN"
+
+          fail=0
+          for pair in "plugin.json:$PLUGIN" "marketplace.metadata:$MARKET_META" "marketplace.plugins[0]:$MARKET_PLUGIN"; do
+            name="${pair%%:*}"; value="${pair#*:}"
+            if [ "$value" != "$TAG" ]; then
+              echo "::error::$name is $value but the tag is $TAG"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Check every declared skill exists and has frontmatter
+        run: |
+          fail=0
+          for skill in $(jq -r '.skills[]' .claude-plugin/plugin.json); do
+            f="$skill/SKILL.md"
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is missing"
+              fail=1
+              continue
+            fi
+            head -1 "$f" | grep -qx -- '---' || { echo "::error::$f has no frontmatter"; fail=1; }
+            grep -qE '^name: ' "$f" || { echo "::error::$f has no name"; fail=1; }
+            grep -qE '^description: ' "$f" || { echo "::error::$f has no description"; fail=1; }
+          done
+          exit $fail
+
+      - name: Check the changelog has a section for this version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          grep -qE "^## $TAG( |$)" CHANGELOG.md || {
+            echo "::error::CHANGELOG.md has no '## $TAG' section"
+            exit 1
+          }
