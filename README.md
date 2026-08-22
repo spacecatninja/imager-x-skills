@@ -69,6 +69,7 @@ Asking directly works too:
 | `transformers.md` | Per-transformer feature matrix, and what each transformer silently drops |
 | `modern-formats.md` | WebP, AVIF and JPEG XL — encoding them and delivering them without breaking your cache |
 | `templating-api.md` | The complete `craft.imagerx` surface, transformed-image models, placeholders, colour utilities |
+| `graphql.md` | The `imagerTransform` query and `AssetInterface` field, the `@imagerTransform` and `@imagerSrcset` directives, every argument and `return` value, and pre-warming for headless |
 | `recipes.md` | Copy-paste patterns for heroes, card grids, art direction, ratio boxes, SVG logos, Matrix images |
 
 The skill body itself is a short router plus a list of cross-cutting pitfalls; reference files
@@ -76,8 +77,8 @@ load only when the task needs them.
 
 ### Out of scope
 
-The PHP extension API (custom transformers, effects, optimizers, storages, adapters), GraphQL,
-and the PDF/Video/DALL·E adapters. The skill says so rather than guessing, and points at the
+The PHP extension API (custom transformers, effects, optimizers, storages, adapters) and the
+PDF/Video/DALL·E adapters. The skill says so rather than guessing, and points at the
 documentation.
 
 ## Editions

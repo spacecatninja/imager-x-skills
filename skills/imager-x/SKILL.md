@@ -1,6 +1,6 @@
 ---
 name: imager-x
-description: "Imager X — the image transform, optimization and manipulation plugin for Craft CMS, by SpaceCat Ninja. Covers responsive image markup with the Power Pack (pppicture/ppimg/ppplaceholder/pptransform), the quick transform syntax, named transforms, automatic generation of transforms, the full transform parameter set, srcset and sizes best practices, modern formats (WebP/AVIF/JPEG XL), placeholders and colors, imager-x config files, and the feature differences between transformers. ALWAYS load when writing, editing, reviewing or debugging image transforms or responsive image markup in a Craft project that has Imager X installed. Triggers on: craft.imagerx, craft.imager, transformImage, pppicture, ppimg, ppplaceholder, pptransform, |srcset, imager-x.php, imager-x-transforms.php, imager-x-generate.php, imager-x-power-pack.php, named transform, quick syntax, fillTransforms, fillInterval, fillAttribute, autoFillCount, transformDefaults, configOverrides, generateFlags, displayName, blurhash, blurup, dominantColor, silhouette, lazysizes, lazysizesClass, imagerSystemPath, imagerUrl, safeFileFormats, optimizeType, optimizers, filenamePattern, hashPath, addVolumeToPath, allowUpscale, resizeFilter, smartResizeEnabled, transformerParams, adapterParams, imgixParams, customEncoderOptions, croponly, letterbox, cropZoom, preEffects, effects, watermark, trim, pad, frames, getDominantColor, getColorPalette, getPercievedBrightness, serverSupportsWebp, serverSupportsAvif, clientSupports, isAnimated, base64Pixel, imager-x/generate, imager-x/clear-caches, imager-x/clean, imgix transformer, imagekit transformer, imageboss transformer, cloudflareimages transformer, awsserverless transformer, bunny transformer, imgixdownload, responsive images, srcset, sizes attribute, art direction, picture element, LCP image, fetchpriority, CLS, focal point, object-position, image placeholder, plus verbatim symptoms: 'transform returns null', 'srcset is empty', 'foreach() argument must be of type array|object, string given', 'Unsupported operand types: string / int', 'position has no effect', 'quality is ignored', 'webp quality not applied', 'placeholder division by zero', 'auto generation is not generating', 'transforms regenerate on every request', 'wrong source is picked', 'sources are in the wrong order', 'ratio is ignored', 'getPath returns empty', 'getSize returns empty'. Do NOT trigger for Craft's native asset transforms (asset.getUrl({width}), craft\\elements\\Asset transforms, imageTransforms in project config) when Imager X is not installed, or for ImageOptimize."
+description: "Imager X — the image transform, optimization and manipulation plugin for Craft CMS, by SpaceCat Ninja. Covers responsive image markup with the Power Pack (pppicture/ppimg/ppplaceholder/pptransform), the quick transform syntax, named transforms, automatic generation of transforms, the full transform parameter set, srcset and sizes best practices, modern formats (WebP/AVIF/JPEG XL), placeholders and colors, imager-x config files, the feature differences between transformers, and Imager X's GraphQL surface (the imagerTransform query and AssetInterface field, and the imagerTransform/imagerSrcset directives). ALWAYS load when writing, editing, reviewing or debugging image transforms or responsive image markup in a Craft project that has Imager X installed. Triggers on: craft.imagerx, craft.imager, transformImage, pppicture, ppimg, ppplaceholder, pptransform, |srcset, imager-x.php, imager-x-transforms.php, imager-x-generate.php, imager-x-power-pack.php, named transform, quick syntax, fillTransforms, fillInterval, fillAttribute, autoFillCount, transformDefaults, configOverrides, generateFlags, displayName, blurhash, blurup, dominantColor, silhouette, lazysizes, lazysizesClass, imagerSystemPath, imagerUrl, safeFileFormats, optimizeType, optimizers, filenamePattern, hashPath, addVolumeToPath, allowUpscale, resizeFilter, smartResizeEnabled, transformerParams, adapterParams, imgixParams, customEncoderOptions, croponly, letterbox, cropZoom, preEffects, effects, watermark, trim, pad, frames, getDominantColor, getColorPalette, getPercievedBrightness, serverSupportsWebp, serverSupportsAvif, clientSupports, isAnimated, base64Pixel, imager-x/generate, imager-x/clear-caches, imager-x/clean, imgix transformer, imagekit transformer, imageboss transformer, cloudflareimages transformer, awsserverless transformer, bunny transformer, imgixdownload, responsive images, srcset, sizes attribute, art direction, picture element, LCP image, fetchpriority, CLS, focal point, object-position, image placeholder, graphql, GraphQL transforms, imagerTransform, imagerSrcset, @imagerTransform, @imagerSrcset, ImagerTransformedImageInterface, safeFileFormats in graphql, headless Craft images, plus verbatim symptoms: 'transform returns null', 'srcset is empty', 'foreach() argument must be of type array|object, string given', 'Unsupported operand types: string / int', 'position has no effect', 'quality is ignored', 'webp quality not applied', 'placeholder division by zero', 'auto generation is not generating', 'transforms regenerate on every request', 'wrong source is picked', 'sources are in the wrong order', 'ratio is ignored', 'getPath returns empty', 'getSize returns empty', 'Unknown directive imagerTransform', 'Cannot query field imagerTransform', 'graphql transform returns null', 'base64 is empty in graphql', 'the directive does nothing'. Do NOT trigger for Craft's native asset transforms (asset.getUrl({width}), craft\\elements\\Asset transforms, imageTransforms in project config) when Imager X is not installed, or for ImageOptimize."
 ---
 
 # Imager X — Transforms and Responsive Images for Craft CMS
@@ -24,7 +24,8 @@ Verified against **Imager X 6.1.0** and **Power Pack 1.1.3** (August 2026).
 ## Scope
 
 This skill owns: Imager X transforms and transform parameters, responsive image markup,
-named transforms, automatic generation, Imager X config files, and transformer selection.
+named transforms, automatic generation, Imager X config files, transformer selection, and
+Imager X's GraphQL surface.
 
 It does not own general Craft template architecture, Twig style conventions, or asset
 volume and filesystem setup. Follow the project's existing conventions for those, and the
@@ -32,9 +33,8 @@ Craft docs at https://craftcms.com/docs/5.x/ for Craft itself.
 
 Also out of scope, and worth saying so rather than guessing: the PHP extension API
 (`EVENT_REGISTER_TRANSFORMERS`, writing custom transformers, effects, optimizers, storages
-or adapters), implementing `TransformedImageInterface`, GraphQL transforms, and the
-PDF/Video adapters. `WebFetch` https://imager-x.spacecat.ninja/extending or
-https://imager-x.spacecat.ninja/usage/graphql for those.
+or adapters), implementing `TransformedImageInterface`, and the PDF/Video adapters.
+`WebFetch` https://imager-x.spacecat.ninja/extending for those.
 
 ## Documentation
 
@@ -67,7 +67,7 @@ Imager X ships as **Lite** ($49) and **Pro** ($99). These are Pro-only:
 | Automatic generation of transforms | `config/imager-x-generate.php` is inert |
 | `imager-x/generate` console command | Exits with "Console commands are only available in Imager X Pro" |
 | External storages (S3, GCS, DO Spaces) | `storages` config is inert |
-| GraphQL transform support | No Imager fields in the schema |
+| GraphQL transform support | No Imager query, field or directives in the schema — see `graphql.md` |
 
 Everything else — transforms, the Power Pack, quick syntax, named transforms, optimizers,
 placeholders, colors, WebP/AVIF/JXL — works on Lite. When a task needs a Pro feature, say so
@@ -171,7 +171,12 @@ drop it if they decline or say nothing.
   only propagating saves. See `auto-generate.md`.
 - **Non-`craft` transformers degrade silently.** On imgix, `getPath()`, `getExtension()`,
   `getMimeType()`, `getSize()`, `getDataUri()` and `getBase64Encoded()` return empty strings
-  rather than failing. See `transformers.md`.
+  rather than failing. Over GraphQL the same fields come back as empty strings and `0` — not
+  null — so a consumer cannot tell them from real values. See `transformers.md`, `graphql.md`.
+- **The GraphQL directives only apply to a `url` field.** `@imagerTransform` and `@imagerSrcset`
+  return the value untouched on any other field, which reads as a transform that did nothing.
+  `safeFileFormats` also gates every GraphQL path, so an AVIF or SVG source resolves to `null`
+  by default. See `graphql.md`.
 - **`|srcset` de-duplicates by descriptor.** Two transforms that resolve to the same width
   collapse into one candidate with no warning. See `transform-syntax.md`.
 - **Imager's transform cache is not Craft's cache.** `php craft cache/flush` does not clear it;
@@ -204,6 +209,10 @@ Read the reference file for the task. More than one often applies.
 - "Add a blurhash placeholder" → `templating-api.md` (placeholder) + `responsive-images.md` (Placeholders)
 - "Get the dominant colour for a background" → `templating-api.md` (Colors)
 - "Pick a text colour with enough contrast" → `templating-api.md` (Colors)
+- "Query transforms over GraphQL" / "images for a headless front end" → `graphql.md`
+- "My GraphQL transform returns null" → `graphql.md` (safeFileFormats, Pitfalls)
+- "The `@imagerTransform` directive does nothing" → `graphql.md` (Directive)
+- "Get a srcset out of GraphQL" → `graphql.md` (`@imagerSrcset`)
 
 | Reference | Scope | ~Lines |
 |-----------|-------|-------:|
@@ -216,4 +225,5 @@ Read the reference file for the task. More than one often applies.
 | `references/transformers.md` | Per-transformer feature matrix and what each one silently drops, `transformerParams` escape hatch, storages and optimizers, choosing a transformer | 225 |
 | `references/modern-formats.md` | WebP, AVIF, JPEG XL; `<picture>` negotiation vs transformer `auto=format`; support detection; `safeFileFormats`; animated GIFs; format ladders | 204 |
 | `references/templating-api.md` | The complete `craft.imagerx` surface with verbatim signatures, `placeholder()` config, transformed-image model methods, colors and contrast utilities | 246 |
+| `references/graphql.md` | Pro gate, the `imagerTransform` query and `AssetInterface` field, `@imagerTransform` and `@imagerSrcset` directives and every argument, `return` values, the fields on `ImagerTransformedImageInterface`, the `safeFileFormats` gate, pre-warming and caching for headless | 290 |
 | `references/recipes.md` | Copy-paste patterns: LCP hero, card grid, art-directed banner, orientation switch, background image, SVG logo, rich-text images, auto-generated thumbnails, no-Power-Pack equivalents | 349 |

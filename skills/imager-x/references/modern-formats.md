@@ -144,9 +144,9 @@ caching. Reach for it only when you control caching precisely, and prefer `<pict
 Default from source: `['jpg', 'jpeg', 'gif', 'png', 'webp']`. `webp` was added in 6.0.0; some
 published documentation still omits it.
 
-It gates **automatic generation and CP thumbnails only** — `transformImage()` accepts any
-format regardless. So an AVIF *source* asset is skipped by automatic generation unless you add
-it:
+It gates **automatic generation, CP thumbnails and every GraphQL path** — `transformImage()` in
+Twig accepts any format regardless. So an AVIF *source* asset is skipped by automatic generation,
+and resolves to `null` over GraphQL, unless you add it:
 
 ```php
 'safeFileFormats' => ['jpg', 'jpeg', 'gif', 'png', 'webp', 'avif'],
