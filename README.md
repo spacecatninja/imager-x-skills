@@ -23,6 +23,16 @@ Claude Code keeps auto-update off for third-party marketplaces, so pull new vers
 `/plugin marketplace update imager-x-skills`, or turn auto-update on under `/plugin` →
 Marketplaces.
 
+Or with the [skills CLI](https://github.com/vercel-labs/skills), which installs into whichever
+agents it finds — Claude Code, Cursor, Copilot, Codex and others:
+
+```bash
+npx skills add spacecatninja/imager-x-skills
+```
+
+Add `-g` for a global install instead of the current project. This route needs Node 22.20 or
+newer, and it tracks `main` rather than a release tag — `npx skills update` pulls the latest.
+
 Or clone and symlink into `~/.claude/skills/`:
 
 ```bash
