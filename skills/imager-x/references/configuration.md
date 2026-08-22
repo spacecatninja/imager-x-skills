@@ -199,6 +199,10 @@ Three things to know before enabling them:
 - **`optimizeType: 'job'` means a queue job per transform**, and a window where unoptimized
   files are served. `cacheDurationNonOptimized` (300s) keeps those from being cached for long.
   Automatic generation forces `'runtime'` regardless of this setting.
+- **`optimizeType` only moves *optimization*, never the transform itself.** With the `craft`
+  transformer the image is always encoded during the request that first asks for it; there is no
+  setting that defers that. Automatic generation is the only way to move transform work off the
+  request. See `auto-generate.md`.
 - **API keys go in `.env`**, via `App::env()` or `getenv()` — never in the config file.
 
 Remote transformers do their own optimization, so `optimizers` only applies to `craft` and

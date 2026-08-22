@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "First-party Claude Code skills for Imager X and its ecosystem of transformers, storage drivers, optimizers and adapters.",
-    "version": "1.1.0"
+    "version": "1.1.1"
   },
   "plugins": [
     {
       "name": "imager-x",
       "source": "./",
       "description": "Authoritative Claude Code skill for Imager X, the image transform plugin for Craft CMS. Responsive images with the Power Pack, quick syntax, named transforms, automatic generation, GraphQL, and per-transformer feature differences. Authored from plugin source.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "André Elvan"
       },

@@ -172,9 +172,12 @@ outside Imager's scope — but doing it is almost always the right call for larg
 - **Two formats, not three.** AVIF plus a JPEG fallback covers essentially all traffic now.
   Adding WebP in the middle triples the transforms for a small slice of browsers that support
   WebP but not AVIF.
-- **AVIF encoding is slow.** With `optimizeType: 'job'` this lands in the queue, but a cold
-  cache on a large page is still a real cost. Pre-generate with automatic generation — see
-  `auto-generate.md`.
+- **AVIF encoding is slow, and nothing defers it.** With the `craft` transformer a transform is
+  encoded during the request that first asks for it, so a cold cache on a large page pays the
+  full cost inline. `optimizeType` does not help — it governs optimizers, not encoding.
+  Pre-generating with automatic generation is the only way to move the work off the request; see
+  `auto-generate.md`. A service transformer moves it off your server entirely — see
+  `transformers.md`.
 - **Do not convert PNGs with transparency to JPEG** by putting `format: 'jpg'` in shared
   defaults. WebP and AVIF both handle alpha; JPEG does not, and `bgColor` will flatten it.
 - **Leave the format off entirely** to keep the source format. Often the right choice for
