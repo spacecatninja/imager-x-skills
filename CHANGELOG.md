@@ -1,5 +1,9 @@
 # Release Notes for the Imager X Claude skill
 
+## 1.2.1
+
+- Fixed a reference to the non-existent `php craft cache/flush` console command in `SKILL.md`, `references/graphql.md` and `references/auto-generate.md`. Craft's command is `clear-caches/all`. The surrounding claim is unchanged and still correct: Imager X registers a CP utility rather than a Craft cache option, so clearing Craft's caches never touches the transform cache.
+
 ## 1.2.0
 
 - Added the `gumlet` transformer to `references/transformers.md`: the handles table, the feature support matrix, a full per-transformer section covering profiles and sources, the `croponly` fallback, untranslated effects and watermarks, approximated `trim`, compensated `pad`, the `mode` collision with `transformerParams`, web proxy profiles for external URLs, signed URLs, `useCloudSourcePath`, purging and source ID resolution, plus an example config.

@@ -179,7 +179,7 @@ drop it if they decline or say nothing.
   by default. See `graphql.md`.
 - **`|srcset` de-duplicates by descriptor.** Two transforms that resolve to the same width
   collapse into one candidate with no warning. See `transform-syntax.md`.
-- **Imager's transform cache is not Craft's cache.** `php craft cache/flush` does not clear it;
+- **Imager's transform cache is not Craft's cache.** `php craft clear-caches/all` does not clear it;
   use `imager-x/clear-caches/transforms-cache` or the CP utility. See `configuration.md`.
 
 ## Reference Files

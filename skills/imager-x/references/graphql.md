@@ -241,7 +241,7 @@ more reason to prefer handles over inline directive arguments in a headless proj
 
 **Two unrelated caches.** Craft's `enableGraphqlCaching` (default `true`) caches the GraphQL
 *response*; Imager's transform cache holds the *files*. Clearing one does nothing to the other,
-and `php craft cache/flush` does not touch Imager's. When a stale transform survives a config
+and `php craft clear-caches/all` does not touch Imager's. When a stale transform survives a config
 change, clear both: `imager-x/clear-caches/transforms-cache` and Craft's caches. See
 `configuration.md`.
 

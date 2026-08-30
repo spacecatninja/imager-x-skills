@@ -1,7 +1,7 @@
 {
   "name": "imager-x",
   "description": "Authoritative Claude Code skill for Imager X, the image transform plugin for Craft CMS. Covers responsive image markup with the Power Pack, quick syntax, named transforms, automatic generation, transform parameters, configuration, GraphQL, and per-transformer feature differences. Authored from plugin source.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "homepage": "https://imager-x.spacecat.ninja/",
   "author": {
     "name": "André Elvan",

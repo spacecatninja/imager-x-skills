@@ -237,7 +237,7 @@ php craft imager-x/clean --runtimeCache
 php craft imager-x/clean --volume=images --exclude=logos
 ```
 
-`php craft cache/flush` does **not** clear Imager X transforms — they are files, not cache
+`php craft clear-caches/all` does **not** clear Imager X transforms — they are files, not cache
 entries. See `configuration.md`.
 
 ## The element action
