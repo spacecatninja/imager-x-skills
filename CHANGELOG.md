@@ -1,5 +1,12 @@
 # Release Notes for the Imager X Claude skill
 
+## 1.2.0
+
+- Added the `gumlet` transformer to `references/transformers.md`: the handles table, the feature support matrix, a full per-transformer section covering profiles and sources, the `croponly` fallback, untranslated effects and watermarks, approximated `trim`, compensated `pad`, the `mode` collision with `transformerParams`, web proxy profiles for external URLs, signed URLs, `useCloudSourcePath`, purging and source ID resolution, plus an example config.
+- Noted in `references/modern-formats.md` that Gumlet does `Accept` header format negotiation, with its own `format: 'auto'` param rather than imgix's `auto: 'format'`.
+- Noted in `references/templating-api.md` that the Gumlet model also adds `getPalette()`.
+- Added Gumlet triggers to the skill description.
+
 ## 1.1.1
 
 - Fixed an incorrect claim in `references/modern-formats.md` that `optimizeType: 'job'` moves AVIF encoding into the queue. `optimizeType` governs optimizers, not encoding — with the `craft` transformer a transform is always encoded during the request that first asks for it, and automatic generation is the only way to move that work off the request.

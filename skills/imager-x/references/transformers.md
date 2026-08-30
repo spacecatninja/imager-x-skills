@@ -19,6 +19,7 @@ requirement.
 | `craft` | built in | Locally, GD or Imagick |
 | `imgix` | `imager-x-imgix-transformer` | imgix, served from their CDN |
 | `imgixdownload` | `imager-x-imgix-download-transformer` | imgix, then downloaded and served locally |
+| `gumlet` | `imager-x-gumlet-transformer` | Gumlet |
 | `imagekit` | `imager-x-imagekit-transformer` | ImageKit |
 | `imageboss` | `imager-x-imageboss-transformer` | ImageBoss |
 | `cloudflareimages` | `imager-x-cloudflare-images-transformer` | Cloudflare Images |
@@ -34,20 +35,20 @@ Each has its own config file — `imager-x-imgix-transformer.php`,
 
 `craft` is the reference implementation. Everything else supports a subset.
 
-| Feature | craft | imgix | imagekit | imageboss | cloudflare | awsserverless | bunny |
-|---------|:-----:|:-----:|:--------:|:---------:|:----------:|:-------------:|:-----:|
-| `crop`, `fit`, `stretch` | ✅ | ✅ | ✅ | `stretch` ✗ | crop modes only | ✅ | `crop`/`fit` only |
-| `croponly` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| `letterbox` | ✅ | ✅ | ✅ | no opacity | ✗ | ✅ | ✗ |
-| `cropZoom` | ✅ | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Focal points | ✅ | ✅ | anchors only | ✅ | ✗ | edge positions only | ✗ |
-| `effects` | all | via params | via params | 4 only | via params | 5 only | via params |
-| `preEffects` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| `watermark` | ✅ | via params | via params | via params | via params | via params | via params |
-| `frames` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| `trim` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| External URLs | ✅ | ✅ | ✅ | **✗** | ✅ | **✗** | **✗** |
-| Optimizers | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Feature | craft | imgix | gumlet | imagekit | imageboss | cloudflare | awsserverless | bunny |
+|---------|:-----:|:-----:|:------:|:--------:|:---------:|:----------:|:-------------:|:-----:|
+| `crop`, `fit`, `stretch` | ✅ | ✅ | ✅ | ✅ | `stretch` ✗ | crop modes only | ✅ | `crop`/`fit` only |
+| `croponly` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `letterbox` | ✅ | ✅ | no opacity | ✅ | no opacity | ✗ | ✅ | ✗ |
+| `cropZoom` | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Focal points | ✅ | ✅ | ✅ | anchors only | ✅ | ✗ | edge positions only | ✗ |
+| `effects` | all | via params | via params | via params | 4 only | via params | 5 only | via params |
+| `preEffects` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `watermark` | ✅ | via params | via params | via params | via params | via params | via params | via params |
+| `frames` | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `trim` | ✅ | ✗ | approximated | ✗ | ✗ | ✗ | ✗ | ✗ |
+| External URLs | ✅ | ✅ | proxy profile only | ✅ | **✗** | ✅ | **✗** | **✗** |
+| Optimizers | ✅ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 Where a cell says "via params", use the `transformerParams` transform parameter to pass the
 service's own options — Imager does not translate the Imager-syntax equivalent for you.
@@ -126,6 +127,82 @@ your domain.
 - External storages and optimizers work as they do with `craft`, since the file ends up local.
 - Requires the imgix transformer plugin as well.
 
+### gumlet
+
+The newest of the remote transformers, Imager X 6 only, and the most complete after imgix:
+width, height, ratio, quality, format, percentage focal points, `cropZoom`, `letterbox`, `pad`
+and `trim` all translate. Adds `getPalette($format, $numColors, $cssPrefix)`, cached, the way
+imgix does.
+
+Profiles map one-to-one onto Gumlet **sources**. A profile's `domain` is the source's delivery
+domain (`mysource.gumlet.io`, or your custom domain) and is required — a profile without one
+throws `ImagerException`. Override the profile per transform with
+`{ transformerConfig: { profile: 'other' } }`.
+
+- **`croponly` silently falls back to `fit`.** `preEffects`, `frames`, `resizeFilter` and
+  `customEncoderOptions` are dropped.
+- **No effects or watermarks are converted.** Gumlet has plenty of both — `blur`, `sharp`,
+  `greyscale`, `gamma`, `contrast`, `brightness`, `saturation`, `hue`, `invert`, `tint`, and
+  `overlay` for watermarks — you just pass them yourself through `transformerParams`.
+- `letterbox` opacity is ignored; Gumlet's `fill-color` has no alpha channel.
+- **`trim` is approximated, not translated.** Imager's `trim` is a `0.0`–`1.0` fuzz factor
+  applied *before* resizing; Gumlet's is a `1`–`99` percentage similarity to the top left pixel
+  applied *after*. The value is converted for you, but the result differs from `craft`. Pass
+  `trim-color` through `transformerParams` to trim a specific colour instead.
+- **`pad` is compensated for.** Imager counts padding as part of `width`/`height`, Gumlet pads
+  after resizing, so the transformer shrinks the resize target. The output is the size you
+  asked for.
+- **Gumlet's own resize param is also called `mode`**, and `transformerParams` is applied last,
+  so `transformerParams: { mode: 'max' }` overrides the mode worked out from Imager's `mode`.
+  That is how you reach Gumlet's `min`, `max` and `fillmax`.
+- **External URLs need a web proxy profile** — `sourceIsWebProxy: true`, which sends the full
+  URL behind a `fetch/` segment. Hand an absolute URL to a normal profile and you get a warning
+  in the log and a URL that does not resolve. Web proxy profiles are never purged.
+- **`signKey` is required if the source has "Secure URLs" enabled** — Gumlet answers `403` to
+  every unsigned URL on such a source. Leave `signedUrlsExpireSeconds` at `0` unless you
+  genuinely need expiry: expiring URLs change on every request, so they cache badly.
+- `useCloudSourcePath` (default `true`) prepends the filesystem's path to the asset path, so one
+  Gumlet source can cover several Craft filesystems in the same bucket. It only does anything on
+  filesystems that have a subfolder setting — S3 and GCS do, local ones do not. `addPath` is the
+  manual equivalent, and takes a volume-handle-keyed array.
+- `getExternalImageDimensions` behaves exactly as it does on imgix (see above).
+- Format negotiation works: `transformerParams: { format: 'auto' }` picks AVIF/WebP/JPEG from
+  the `Accept` header. See `modern-formats.md`.
+
+**Purging matters more here than elsewhere.** Gumlet caches your *original* images for up to
+three months, so replacing a file at the same path keeps serving the old one until it is purged.
+Set `apiKey` (top level, or per profile) and `autoPurge: true`; a "Purge from Gumlet" element
+action is on by default. Purging is by source path and takes every derivative with it, so
+transforms are not purged individually. Purging is **skipped silently** for a profile with no API
+key — including when the key points at an environment variable that is not set, which resolves to
+an empty string rather than staying literal. The purge endpoint needs the source's 24-character
+`sourceId`, which the plugin resolves from `domain` via the sources API and caches for 24 hours;
+set it explicitly to skip the lookup, or when a custom domain stops the lookup from matching.
+
+Config: `imager-x-gumlet-transformer.php` — `profiles`, `defaultProfile`, `apiKey`, `autoPurge`,
+`purgeElementAction`. Per profile: `domain`, `useHttps`, `signKey`, `signedUrlsExpireSeconds`,
+`sourceId`, `apiKey`, `sourceIsWebProxy`, `useCloudSourcePath`, `addPath`,
+`getExternalImageDimensions`, `defaultParams`, `excludeFromPurge`.
+
+```php
+// config/imager-x-gumlet-transformer.php
+return [
+    'defaultProfile' => 'default',
+    'apiKey' => '$GUMLET_API_KEY',
+    'autoPurge' => true,
+    'profiles' => [
+        'default' => [
+            'domain' => 'mysource.gumlet.io',
+            'useCloudSourcePath' => true,
+        ],
+        'proxy' => [
+            'domain' => 'myproxysource.gumlet.io',
+            'sourceIsWebProxy' => true,
+        ],
+    ],
+];
+```
+
 ### imagekit
 
 Basic transform parameters translate. Three real gaps:
@@ -189,6 +266,7 @@ supports your Craft major version before planning around it.
 | Ephemeral filesystem (containers, Cloud, Servd) | A remote transformer, or an external storage with `craft` |
 | Already on Cloudflare, only need resize/quality/format | `cloudflareimages` |
 | Want imgix quality but images served from your domain | `imgixdownload` |
+| CDN delivery with most of imgix's feature set, plus `pad` and `trim` | `gumlet` |
 | Already on AWS with images in S3 | `awsserverless` |
 
 Do not switch transformer *per transform*. `transformer` is excluded from the config-override

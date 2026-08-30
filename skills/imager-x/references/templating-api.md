@@ -116,7 +116,7 @@ misses in development:
 {% endif %}
 ```
 
-The imgix model adds `getPalette(string $format = 'json', int $numColors = 6, string $cssPrefix = '')`.
+The imgix and Gumlet models add `getPalette(string $format = 'json', int $numColors = 6, string $cssPrefix = '')`.
 
 ## Format and capability checks
 

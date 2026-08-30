@@ -109,12 +109,18 @@ variants. See `named-transforms.md`.
 
 ### Content negotiation instead
 
-imgix and ImageKit can pick the format from the `Accept` header, so one URL serves AVIF, WebP
-or JPEG depending on the browser:
+imgix, ImageKit and Gumlet can pick the format from the `Accept` header, so one URL serves
+AVIF, WebP or JPEG depending on the browser:
 
 ```twig
+{# imgix, ImageKit #}
 {% set imgs = craft.imagerx.transformImage(image, [600, 1800, 16/9], {
     transformerParams: { auto: 'format' }
+}) %}
+
+{# Gumlet — its own param, and it wins over Imager's `format` #}
+{% set imgs = craft.imagerx.transformImage(image, [600, 1800, 16/9], {
+    transformerParams: { format: 'auto' }
 }) %}
 ```
 
