@@ -167,7 +167,7 @@ an exception is far from the template that triggered it. A throwing closure is c
 and its key is dropped from the transform — so the failure shows up as a wrong-looking image,
 not an error page. Guard against null dimensions and non-Asset inputs, as above.
 
-## The filename-hash exclusion trap
+## The filename-hash exclusions
 
 Seven settings are applied but **not** included in the config-override string that feeds the
 transform filename:
@@ -177,29 +177,39 @@ fillTransforms, fillInterval, fillAttribute, filenamePattern,
 transformer, optimizeType, safeFileFormats
 ```
 
-Two named transforms that differ *only* by one of these produce the same filename for the same
-source and dimensions, so whichever ran first wins and the second reads the cached file.
+Most are excluded because they cannot change what a single transform renders. `fillTransforms`,
+`fillInterval` and `fillAttribute` add whole transforms rather than altering one; `optimizeType`
+only decides *when* optimization runs; `safeFileFormats` gates whether a transform happens at
+all. Overriding those per transform is uneventful.
 
-❌ These two collide — same widths, same defaults, filenames identical:
+Two are worth understanding:
+
+**`transformer` — excluded on purpose.** `craft` and `imgixdownload` are the only transformers
+that write local files, and the exclusion makes them write the *same* filenames, so
+`imgixdownload` can be swapped in and out without regenerating the cache. The flip side: a
+project using both, with otherwise identical transforms, has the second read the first's cached
+file. Remote transformers never write a local file, so they have nothing to collide with —
+overriding `transformer` per transform is a supported pattern and the basis of combining
+transformers, see `transformers.md`.
+
+**`filenamePattern` — excluded because it *is* the filename.** Overriding it per transform
+writes the same transform under two names, so the cost is duplicated files rather than a
+collision. The real hazard is a pattern that leaves out `{transformString}`:
+
+❌ Every transform of a source lands on one filename, whatever else differs:
 ```php
 return [
-    'thumbLocal'  => ['transforms' => [['width' => 400]], 'configOverrides' => ['transformer' => 'craft']],
-    'thumbRemote' => ['transforms' => [['width' => 400]], 'configOverrides' => ['transformer' => 'imgix']],
+    'thumb' => [
+        'transforms' => [['width' => 400], ['width' => 800]],
+        'configOverrides' => ['filenamePattern' => '{basename}.{extension}'],
+    ],
 ];
 ```
 
-✅ Add something that does affect the filename, or set the transformer globally per
-environment instead:
+✅ Keep something transform-specific in the pattern:
 ```php
-return [
-    'thumbLocal'  => ['transforms' => [['width' => 400]], 'configOverrides' => ['transformer' => 'craft']],
-    'thumbRemote' => ['transforms' => [['width' => 401]], 'configOverrides' => ['transformer' => 'imgix']],
-];
+'configOverrides' => ['filenamePattern' => '{basename}_{transformString|shorthash}.{extension}'],
 ```
-
-In practice, mixing transformers per transform is rare — this mostly bites when someone tries
-to override `filenamePattern` per transform for tidier filenames and finds transforms
-overwriting each other.
 
 ## generateFlags
 
