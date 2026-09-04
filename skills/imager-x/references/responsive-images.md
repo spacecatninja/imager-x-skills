@@ -39,7 +39,10 @@ Renders (verified output, srcset values elided):
 ```
 
 The second argument is anything `transformImage()` accepts — a transform object, an array of
-them, quick syntax, or a named transform handle. See `transform-syntax.md`.
+them, quick syntax, or a named transform handle. Prefer quick syntax for a width ladder, or the
+handle when the project keeps its definitions in `config/imager-x-transforms.php`. A
+full-syntax array here is a sign the ladder could collapse — see `transform-syntax.md`
+(Prefer Quick Syntax).
 
 ## pppicture — art direction and format negotiation
 

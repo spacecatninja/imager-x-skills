@@ -4,7 +4,9 @@
 slowest possible moment. Automatic generation creates them when an asset is uploaded or an
 element is saved, plus console commands and an element action for batch runs.
 
-Generation works off **named transforms** or quick syntax — see `named-transforms.md`.
+Generation works off **named transforms** or **quick syntax** — use whichever the project's
+templates already use, because the generated file only helps if it is the file a request asks
+for. See *Mirror what templates render* below, and `named-transforms.md`.
 
 ## The config file
 
@@ -46,7 +48,8 @@ return [
 **If this file does not exist, no event listeners are registered at all.** An empty config is
 not the same as a missing one.
 
-Transforms may be named handles or quick syntax anywhere a transform list is accepted:
+Transforms may be named handles or quick syntax anywhere a transform list is accepted, mixed
+freely:
 
 ```php
 'volumes' => [
@@ -54,8 +57,123 @@ Transforms may be named handles or quick syntax anywhere a transform list is acc
 ],
 ```
 
+Every value is a **list** of transforms, so a lone quick-syntax array sits one level deeper
+than it looks:
+
+```php
+'volumes' => [
+    'images' => [[400, 1200, 16 / 9]],   // ✅ one quick-syntax transform
+    'photos' => [400, 1200, 16 / 9],     // ❌ iterated as three transforms
+],
+```
+
+The second form logs `Unknown transform type “400” could not be found` three times and
+generates nothing — the list is iterated entry by entry, and `400` is neither quick syntax nor a
+named handle. The same applies to `fields` values and to `transforms` inside an `elements`
+entry.
+
 Every generated transform is forced to `optimizeType: 'runtime'`, so optimization happens
 inline in the job rather than spawning a second queue job per image.
+
+## Mirror what templates render
+
+The filename of a transform is derived from its parameters plus the config overrides that
+affect rendering. **A generate entry that does not describe the same transform the template
+does writes files nothing reads, while requests keep transforming on demand** — the failure
+looks exactly like generation not running at all.
+
+So before writing `config/imager-x-generate.php`, find out what the project renders:
+
+```bash
+# Named transforms defined in the project
+cat config/imager-x-transforms.php
+
+# Call sites, whichever style they use
+grep -rnE "ppimg\(|pppicture\(|pptransform\(|transformImage\(" templates/
+```
+
+Then follow that style rather than imposing one.
+
+### Templates use named transforms
+
+List the handles. Nothing else to think about: generation resolves the named transform,
+including its `defaults` and `configOverrides`, exactly as the template does.
+
+```php
+'fields' => [
+    'heroImage' => ['heroImage'],
+],
+```
+
+### Templates write quick syntax inline
+
+Copy the arrays into the generate config verbatim. Generation runs quick syntax through the
+same `transformImage()` call a template does, so the implicit `fillTransforms: 'auto'` expansion
+is identical and the widths and filenames match:
+
+```twig
+{# templates/_components/card.twig #}
+{{ ppimg(entry.image.one(), [400, 1200, 4/3], { sizes: '(min-width: 768px) 33vw, 100vw' }) }}
+```
+
+```php
+// config/imager-x-generate.php
+return [
+    'fields' => [
+        'image' => [[400, 1200, 4 / 3]],
+    ],
+];
+```
+
+`4/3` in Twig and `4 / 3` in PHP are the same float, so the ratio hashes the same. What must
+match is the *value*: `[400, 1200, 1.33]` and `[400, 1200, 4 / 3]` are different transforms.
+
+Do **not** convert the project's inline transforms into named transforms just to set generation
+up. It works as it is, and rewriting call sites is a bigger change than the one asked for —
+offer it if the same ladder is repeated across templates, where a handle would genuinely earn
+its place.
+
+### What has to match
+
+| At the call site | In the generate config |
+|------------------|------------------------|
+| `[400, 1200, 4/3]` | the same array, nested: `[[400, 1200, 4 / 3]]` |
+| A named handle | the same handle |
+| A different ratio, format or quality per template | one entry per variant |
+| `defaults:` / a 3rd argument — transform params | fold them into the slot-2 object: `[[400, 1200, ['ratio' => 4 / 3, 'jpegQuality' => 72]]]` |
+| Power Pack `defaultTransformParams` | same — fold the params into slot 2, or move them into a named transform. See *The defaultTransformParams trap* below |
+| `imagerOverrides:` / a 4th argument — Imager X config settings | not expressible in the generate config; use a named transform with `configOverrides`, called by handle from both sides |
+
+Folding call-site defaults into slot 2 works because transforms are `ksort`ed before the
+filename is built: the same parameters hash the same whether they arrived in the transform, in
+slot 2, or through `transformDefaults`. Config *overrides* are a separate string in the
+filename and have no equivalent in a bare quick-syntax entry, which is why they are the one
+case that forces a handle.
+
+Two things generation adds on its own, neither of which breaks the match:
+
+- **`optimizeType: 'runtime'`** is forced on every generated transform. It is one of the seven
+  settings excluded from the filename hash, so it changes when optimization runs, not what the
+  file is called. See `named-transforms.md`.
+- **`transformDefaults` is passed as `null`.** Generation has no way to know about call-site
+  defaults, which is why they have to be written into the generate entry itself.
+
+### Promote to a named transform when
+
+Quick syntax in the generate config is fine for a ladder used in one template. Reach for a
+named transform when:
+
+- **The call site passes `imagerOverrides`** — config overrides feed the filename and a bare
+  quick-syntax entry cannot carry them. Move them into the named transform's `configOverrides`
+  and call the handle from the template too. (Plain transform `defaults` do not need this — fold
+  them into slot 2.)
+- **A template needs `generateFlags`.** The flags run only on generation's named-transform
+  branch, so `blurhash`, `palette` and `dominantColor` are never precomputed for an inline
+  quick-syntax entry. A blurhash placeholder on a quick-syntax transform decodes the image
+  during the request no matter what the generate config says.
+- **You want to target it from the CLI.** `--transforms` takes handles only.
+- **It is used from GraphQL**, which has no quick syntax at all. See `graphql.md`.
+- **The same ladder appears in several templates.** Then it is a definition, not a one-off.
 
 ## Choosing volumes, fields or elements
 
@@ -208,9 +326,11 @@ php craft imager-x/generate --volume=images --limit=500 --offset=1000
 Behaviours worth knowing:
 
 - **`--transforms` only accepts named transform handles.** It is a comma-separated string, so
-  quick-syntax arrays cannot be passed on the command line. Wrap the quick syntax in a named
-  transform if you need to generate it from the CLI.
-- **Omitting `--transforms` falls back to the config** for that volume or field.
+  quick-syntax arrays cannot be passed on the command line.
+- **Omitting `--transforms` falls back to the config** for that volume or field — which is how
+  quick-syntax entries get backfilled. `php craft imager-x/generate --volume=images` generates
+  everything that volume's config lists, quick syntax included; only picking out a *subset*
+  needs handles.
 - **Specifying both `--volume` and `--field` is an error**, as is specifying neither.
 - Without `--queue` the command transforms inline, which is what you usually want in a deploy
   script — you get real progress output and a meaningful exit code.
@@ -261,6 +381,11 @@ Named transforms can precompute derived data during generation, so a request nev
 templates use a blurhash or dominant-colour placeholder — both otherwise decode the image
 during the request. Ignored when the transform is called from a template.
 
+**They only work through a named transform.** Generation runs the flags on its named-transform
+branch only, so the same ladder written as an inline quick-syntax entry in the generate config
+generates the images but precomputes nothing. This is the one case where a project that
+otherwise writes quick syntax inline needs a handle.
+
 ## The defaultTransformParams trap
 
 The Power Pack's `defaultTransformParams` applies only to Power Pack calls. Generation
@@ -296,4 +421,9 @@ return [
 3. Save an asset, then check the queue: `php craft queue/info`.
 4. Run the queue and look for the files under `imagerSystemPath` (default `@webroot/imager/`).
 5. Check the logs for `Unknown transform type` — that is a handle in the generate config with
-   no matching named transform.
+   no matching named transform, or a quick-syntax array that was not nested and got iterated
+   into its individual numbers.
+6. Confirm the file the template asks for is the file that was written: render the page, copy an
+   image URL, and look for that exact filename under `imagerSystemPath`. A generated file with a
+   *different* hash next to the requested one means the generate entry and the call site
+   disagree — see *Mirror what templates render*.

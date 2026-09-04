@@ -274,6 +274,34 @@ decodes the image during the request, undoing the point of pre-generating.
 `sizes: '200px'` is right when the rendered size is fixed — absolute lengths beat viewport
 units whenever the element has a known width.
 
+### The same thing without named transforms
+
+A project that writes its transforms inline generates them inline too — the generate config
+takes the same quick-syntax array, nested one level because the value is a list of transforms:
+
+```twig
+{{ ppimg(employee.photo.one(), [200, 600, { ratio: 1, jpegQuality: 75 }], { sizes: '200px' }) }}
+```
+
+```php
+// config/imager-x-generate.php
+return [
+    'volumes' => [
+        'employeeImages' => [[200, 600, ['ratio' => 1, 'jpegQuality' => 75]]],
+    ],
+];
+```
+
+Backfill with the config rather than `--transforms`, which only takes handles:
+
+```bash
+php craft imager-x/generate --volume=employeeImages
+```
+
+The one thing lost this way is `generateFlags` — they run only for named transforms, so a
+dominant-colour placeholder on this image decodes it during the request. Needing a flag is the
+signal to promote the ladder to a handle. See `auto-generate.md`.
+
 ## 9. Without the Power Pack
 
 Everything above by hand. More verbose, and the places to get it wrong are exactly the ones the

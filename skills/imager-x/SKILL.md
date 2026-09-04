@@ -110,6 +110,48 @@ php craft plugin/install imager-x-power-pack
 Suggest it, do not act on it — installing a plugin is the user's decision. Say it once, and
 drop it if they decline or say nothing.
 
+## Prefer quick syntax
+
+Quick syntax — `[minWidth, maxWidth]` plus an optional ratio, format or shared-params object —
+is the default way to write a width ladder. It is shorter, it fills the intermediate sizes on
+its own, and it works everywhere a transform is accepted: `transformImage()`, `ppimg`,
+`pppicture` source slots, a named transform's `transforms` key, and the generate config.
+
+```twig
+{# ❌ Three widths, one shared ratio, written the long way #}
+{{ ppimg(image, [{ width: 400 }, { width: 800 }, { width: 1200 }], {
+    defaults: { ratio: 16/9 }
+}) }}
+
+{# ✅ Same ladder, and the in-between sizes come for free #}
+{{ ppimg(image, [400, 1200, 16/9]) }}
+```
+
+**A transform list collapses when its entries differ only in `width`.** Everything shared —
+`ratio`, `format`, `mode`, `position`, quality, effects — moves into the slot-2 object. It does
+**not** collapse for a single fixed size, a `height`-driven ladder, per-size differences (own
+heights, modes, crops, watermarks), or widths that are not real integers. Full rules, and the
+list of things quick syntax cannot express, are in `transform-syntax.md` (Prefer Quick Syntax).
+
+**Rewrite what you touch, not the whole project.** When editing or reviewing a transform that
+collapses, write the quick-syntax version and say what changes: filling adds intermediate
+widths, which is usually an improvement but is more files. The widths that survive keep their
+filenames — identical parameters hash identically, wherever they were written — so only the new
+ones transform on first request. If `config/imager-x-generate.php` describes that ladder, update
+it in the same pass. Leave untouched templates alone unless a sweep was asked for.
+
+**Match the project's structure, not just its syntax.** A project that keeps its transforms in
+`config/imager-x-transforms.php` keeps them there — write the named transform's `transforms` in
+quick syntax rather than moving definitions into templates. A project with inline transforms in
+templates stays inline. Named transforms are still required for GraphQL, for CLI-targeted
+generation, and for `generateFlags` — see `named-transforms.md`.
+
+**Setting up automatic generation follows the same rule.** Mirror what the templates actually
+render: named handles if the project uses named transforms, the same quick-syntax arrays if it
+writes them inline. A generate config that does not describe the same transform the call site
+does generates files no request ever asks for. See `auto-generate.md` (Mirror What Templates
+Render).
+
 ## Common Pitfalls (Cross-Cutting)
 
 - **There is no `|transform` filter, and no `'400x300'` string syntax.** The only Twig filter
@@ -170,8 +212,19 @@ drop it if they decline or say nothing.
   produce a cache miss at request time. Repeat them in the named transform. See
   `auto-generate.md`.
 - **`--transforms` on the console command only accepts named transform handles.** It is a
-  comma-separated string, so quick-syntax arrays cannot be passed on the CLI. See
+  comma-separated string, so quick-syntax arrays cannot be passed on the CLI — but omitting the
+  flag falls back to the volume's or field's generate config, quick syntax included. See
   `auto-generate.md`.
+- **`generateFlags` never fire for quick syntax.** Generation runs the flags only on its
+  named-transform branch, so an inline quick-syntax entry in the generate config precomputes no
+  blurhash, palette or dominant colour. Wrap the ladder in a named transform when a template
+  uses one of those. See `auto-generate.md`.
+- **A generate entry has to match the call site exactly.** Quick syntax in the generate config
+  expands the same way it does in a template, so the same integers and the same slot-2 value
+  produce the same filenames — and one different quality or ratio produces a whole set of files
+  nothing reads. Transform params passed as call-site `defaults` can be folded into the slot-2
+  object (transforms are `ksort`ed before the filename is built), but `imagerOverrides` cannot;
+  those force a named transform carrying `configOverrides`. See `auto-generate.md`.
 - **Automatic generation is queue-based.** With a cron-driven queue runner the front end still
   transforms on demand until the job runs; use a daemon. The draft and revision guards apply
   only to `elements` and `fields` generation — `volumes` generation runs before them and skips
@@ -206,9 +259,12 @@ Read the reference file for the task. More than one often applies.
 - "The wrong source is being picked" / "sources are in the wrong order" → `responsive-images.md` (Source Order)
 - "My srcset is empty" → `transform-syntax.md` (Quick Syntax)
 - "What does `[400, 1200, 16/9]` actually produce?" → `transform-syntax.md` (Quick Syntax)
+- "Can this transform list be quick syntax?" / "Tidy up these transforms" → `transform-syntax.md` (Prefer Quick Syntax)
 - "Generate more intermediate sizes" → `transform-syntax.md` (fillTransforms)
 - "Set up named transforms for this project" → `named-transforms.md`
 - "Reuse a transform but change the ratio" → `named-transforms.md` (Nesting)
+- "Set up automatic generation for this project" → `auto-generate.md` (Mirror What Templates Render)
+- "The project has no named transforms — can it still pre-generate?" → `auto-generate.md` (Mirror What Templates Render)
 - "Why isn't my transform generated on upload?" → `auto-generate.md` (Events and Gating)
 - "Pre-generate transforms for a volume" → `auto-generate.md` (Console Commands)
 - "Generate transforms for one Matrix field only" → `auto-generate.md` (Field Handle Syntax)
@@ -229,14 +285,14 @@ Read the reference file for the task. More than one often applies.
 
 | Reference | Scope | ~Lines |
 |-----------|-------|-------:|
-| `references/responsive-images.md` | Power Pack in full: `pppicture`, `ppimg`, `ppplaceholder`, `pptransform`, source tuples, media queries and source ordering, every `params` key, `sizes` and LCP best practice, placeholders, lazysizes, SVG/GIF bypass, all 14 config settings | 497 |
-| `references/transform-syntax.md` | `transformImage()`, quick syntax parsing rules, full syntax, `fillTransforms` family, `|srcset` and descriptors, transform chaining, external images, closures | 350 |
+| `references/responsive-images.md` | Power Pack in full: `pppicture`, `ppimg`, `ppplaceholder`, `pptransform`, source tuples, media queries and source ordering, every `params` key, `sizes` and LCP best practice, placeholders, lazysizes, SVG/GIF bypass, all 14 config settings | 500 |
+| `references/transform-syntax.md` | `transformImage()`, quick syntax parsing rules, when to prefer and how to rewrite to quick syntax, full syntax, `fillTransforms` family, `|srcset` and descriptors, transform chaining, external images, closures | 462 |
 | `references/transform-parameters.md` | Every transform key, resize modes, `position`, `ratio`, `pad`, `trim`, `frames`, `watermark`, `letterbox`, effects and preEffects, `transformerParams`, and the full normalization gotcha list | 308 |
-| `references/named-transforms.md` | `imager-x-transforms.php`, `transforms`/`defaults`/`configOverrides`/`generateFlags`/`displayName`, merge precedence, nesting, closures, the filename-hash exclusions | 237 |
-| `references/auto-generate.md` | `imager-x-generate.php`, `volumes`/`fields`/`elements`, field handle syntax, event gating, queue behaviour, console commands and flags, element action, strategy | 299 |
+| `references/named-transforms.md` | `imager-x-transforms.php`, `transforms`/`defaults`/`configOverrides`/`generateFlags`/`displayName`, merge precedence, nesting, closures, the filename-hash exclusions | 241 |
+| `references/auto-generate.md` | `imager-x-generate.php`, `volumes`/`fields`/`elements`, matching generation to what templates render (named handles vs inline quick syntax), field handle syntax, event gating, queue behaviour, console commands and flags, element action, strategy | 429 |
 | `references/configuration.md` | `imager-x.php` settings with defaults, paths and URLs, quality per format, filenames and hashing, caching and cache clearing, optimizers, external storages, fallback/mock images, multi-environment | 314 |
 | `references/transformers.md` | Per-transformer feature matrix and what each one silently drops, focal point handling per transformer, `transformerParams` escape hatch and its whitelists, per-transformer config and purging, combining transformers, storages and optimizers, choosing a transformer by constraint | 524 |
 | `references/modern-formats.md` | WebP, AVIF, JPEG XL; `<picture>` negotiation vs transformer `auto=format`; support detection; `safeFileFormats`; animated GIFs; format ladders | 213 |
 | `references/templating-api.md` | The complete `craft.imagerx` surface with verbatim signatures, `placeholder()` config, transformed-image model methods, colors and contrast utilities | 246 |
 | `references/graphql.md` | Pro gate, the `imagerTransform` query and `AssetInterface` field, `@imagerTransform` and `@imagerSrcset` directives and every argument, `return` values, the fields on `ImagerTransformedImageInterface`, the `safeFileFormats` gate, pre-warming and caching for headless | 290 |
-| `references/recipes.md` | Copy-paste patterns: LCP hero, card grid, art-directed banner, orientation switch, background image, SVG logo, rich-text images, auto-generated thumbnails, no-Power-Pack equivalents | 349 |
+| `references/recipes.md` | Copy-paste patterns: LCP hero, card grid, art-directed banner, orientation switch, background image, SVG logo, rich-text images, auto-generated thumbnails with and without named transforms, no-Power-Pack equivalents | 377 |

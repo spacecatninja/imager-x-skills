@@ -23,20 +23,21 @@ return [
         'generateFlags' => ['dominantColor'],
     ],
 
-    // Full syntax with configOverrides, for the rarer case where you want to pin
-    // the step size rather than the number of transforms.
+    // Explicit fill settings, for the rarer case where the step size matters more
+    // than the number of transforms.
     'fixedStepBanner' => [
         'displayName' => 'Fixed Step Banner',
-        'transforms' => [['width' => 800], ['width' => 2400]],
-        'defaults' => ['ratio' => 21 / 9],
+        'transforms' => [800, 3200, 21 / 9],
         'configOverrides' => ['fillTransforms' => true, 'fillInterval' => 400],
     ],
 ];
 ```
 
 `heroImage` yields 800, 1200, 1600, 2000, 2400 — quick syntax fills the range on its own, so it
-needs no `configOverrides` at all. `fixedStepBanner` produces the same widths the long way
-round; reach for that form only when the step itself matters. See `transform-syntax.md`.
+needs no `configOverrides` at all. `fixedStepBanner` overrides them, and explicit overrides beat
+the implicit ones quick syntax adds, so it steps 400 at a time — 800, 1200, 1600 … 3200 — where
+`'auto'` would have given it five candidates whatever the range. Both are quick syntax; reach
+for full syntax only when the entries differ by more than width. See `transform-syntax.md`.
 
 Use it from a template by passing the handle as a string:
 
@@ -65,7 +66,10 @@ Use it from a template by passing the handle as a string:
 ```
 
 Quick syntax inside a named transform behaves exactly as in a template, including the implicit
-`fillTransforms: 'auto'`. See `transform-syntax.md`.
+`fillTransforms: 'auto'`, and it is the form to prefer — a width ladder whose entries differ
+only in `width` belongs in quick syntax, with everything shared in slot 2 or in `defaults`. Full
+syntax is for entries that differ in shape, not just size. See `transform-syntax.md`
+(Prefer Quick Syntax).
 
 ## Merge precedence — the caller wins
 
@@ -92,7 +96,7 @@ and `configOverrides` at each hop, with the *outer* definition winning.
 
 return [
     'base' => [
-        'transforms' => [['width' => 800], ['width' => 1600]],
+        'transforms' => [800, 1600],
         'configOverrides' => ['fillTransforms' => true, 'fillInterval' => 400],
     ],
     'baseLandscape' => [
@@ -200,7 +204,7 @@ collision. The real hazard is a pattern that leaves out `{transformString}`:
 ```php
 return [
     'thumb' => [
-        'transforms' => [['width' => 400], ['width' => 800]],
+        'transforms' => [400, 800],
         'configOverrides' => ['filenamePattern' => '{basename}.{extension}'],
     ],
 ];

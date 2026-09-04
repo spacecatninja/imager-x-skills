@@ -89,11 +89,16 @@ most common cause of "my srcset is empty".
 ```
 
 Watch for this when widths come from a variable or a config value — `entry.someNumberField`
-and values read out of JSON often arrive as strings. Cast them:
+and values read out of JSON often arrive as strings. Cast them with Craft's `|integer` filter,
+which is `intval()` and therefore produces a real int:
 
 ```twig
-{% set imgs = craft.imagerx.transformImage(image, [minWidth|round, maxWidth|round]) %}
+{% set imgs = craft.imagerx.transformImage(image, [minWidth|integer, maxWidth|integer]) %}
 ```
+
+**`|round` is not a cast.** Twig's `round` filter returns a float — `is_int(400.0)` is false —
+so `[minWidth|round, maxWidth|round]` still misses quick syntax. Chain them when the value may
+have decimals: `minWidth|round|integer`.
 
 ### Parsing rules
 
@@ -152,7 +157,18 @@ craft.imagerx.transformImage(image, [400, 1200], null, { fillInterval: 50 })
 craft.imagerx.transformImage(image, [400, 1200], null, { fillInterval: 800 })
 ```
 
-The lever is `autoFillCount` — how many transforms to insert between the anchors:
+It does work with `fillTransforms: true` next to it, though. The implicit overrides are merged
+*under* yours — `array_merge(['fillTransforms' => 'auto'], $configOverrides)` — so anything set
+explicitly wins, and quick syntax covers the fixed-step case too:
+
+```twig
+{# 400, 800, 1200 — a 400px step, however wide the range gets #}
+{% set imgs = craft.imagerx.transformImage(image, [400, 1200], null,
+    { fillTransforms: true, fillInterval: 400 }) %}
+```
+
+The lever in `'auto'` mode is `autoFillCount` — how many transforms to insert between the
+anchors:
 
 | Call | Result |
 |------|--------|
@@ -173,27 +189,123 @@ To get exactly the two sizes you wrote, turn filling off:
 {% set imgs = craft.imagerx.transformImage(image, [400, 1200], null, { fillTransforms: false }) %}
 ```
 
+### Prefer quick syntax, and rewrite to it where it fits
+
+Quick syntax is the default form for a width ladder, in templates, in named transforms, in
+Power Pack transform arguments and in the generate config. **A transform list collapses when
+its entries differ only in `width`.** Everything the entries share moves into slot 2.
+
+| Full syntax | Quick syntax |
+|-------------|--------------|
+| `[{ width: 400 }, { width: 1200 }]` | `[400, 1200]` |
+| `[{ width: 400 }, { width: 800 }, { width: 1200 }]` | `[400, 1200]` |
+| `[{ width: 400, ratio: 16/9 }, { width: 1200, ratio: 16/9 }]` | `[400, 1200, 16/9]` |
+| `[{ width: 400 }, { width: 1200 }]` + `{ ratio: 16/9 }` defaults | `[400, 1200, 16/9]` |
+| `[{ width: 400, format: 'webp' }, { width: 1200, format: 'webp' }]` | `[400, 1200, 'webp']` |
+| `[{ width: 400 }, { width: 1200 }]` + `{ ratio: 4/3, mode: 'crop', position: 'top-center', jpegQuality: 72 }` defaults | `[400, 1200, { ratio: 4/3, mode: 'crop', position: 'top-center', jpegQuality: 72 }]` |
+
+The slot-2 object is the whole transform-defaults object, so `mode`, `position`, `effects`,
+`watermark`, per-format quality and anything else in `transform-parameters.md` belongs there.
+
+Only the two anchors carry over. Row two keeps 400 and 1200 and lets the auto ladder decide the
+rest — 400, 600, 800, 1000, 1200, where the hand-written 800 happens to survive and a
+hand-written 900 would not. That is the point of the collapse, but the resulting srcset is not
+the one that was there before.
+
+❌ Verbose, and the ladder is fixed at three candidates:
+```twig
+{% set imgs = craft.imagerx.transformImage(
+    image,
+    [{ width: 600 }, { width: 1200 }, { width: 1800 }],
+    { ratio: 3/2, mode: 'crop', jpegQuality: 74 }
+) %}
+```
+
+✅ Same intent, five candidates, one line:
+```twig
+{% set imgs = craft.imagerx.transformImage(image, [600, 1800, { ratio: 3/2, mode: 'crop', jpegQuality: 74 }]) %}
+```
+
+### What does not collapse
+
+Leave these in full syntax rather than forcing them:
+
+- **One fixed size.** Quick syntax needs two integers and always returns an array, so
+  `{ width: 400 }` stays a transform object. `[400, 400]` is not the same thing — it is two
+  identical transforms that `|srcset` collapses back into one candidate, wrapped in an array the
+  template then has to index into.
+- **Per-size differences** — its own `height` per width, a different `mode` or crop `position`
+  per size, an effect on one size only, art-directed crops. That is exactly what full syntax is
+  for.
+- **`height`-driven ladders.** Quick syntax always steps `width`; a height ladder needs full
+  syntax with `fillAttribute: 'height'`.
+- **Widths that are not real integers.** `['400', '1200']`, or widths read from a field or JSON,
+  fail `is_int()` and fall through to full syntax, where they throw or render nothing. Cast with
+  `|integer` if you want the collapse (not `|round`, which returns a float), otherwise keep the
+  objects.
+- **Exact intermediate widths.** `[{width: 400}, {width: 900}, {width: 1200}]` is not
+  `[400, 1200]` — the anchors survive, the 900 does not, and the auto ladder replaces it with
+  600/800/1000. Collapse it only when the specific widths were arbitrary, which they usually
+  were.
+
+One gotcha specific to slot 2: it is merged **over** the anchor width
+(`array_merge(['width' => …], $defaults)`), so a `width` key inside the slot-2 object overwrites
+both anchors and every candidate comes out the same size.
+
+❌ Both transforms are 800 wide, and `|srcset` de-duplicates them down to one candidate:
+```twig
+{% set imgs = craft.imagerx.transformImage(image, [400, 1200, { width: 800, ratio: 16/9 }]) %}
+```
+
+### What changes when you rewrite
+
+The rewrite is a behaviour change, not a pure reformat. Say so when proposing it:
+
+- **The candidate set grows.** Two widths become five (`autoFillCount` default 3). Usually an
+  improvement — a denser srcset lets the browser pick a closer fit — but it is more files on
+  disk and more work for the first request or the generate run. `{ fillTransforms: false }` in
+  the config overrides keeps exactly the widths written.
+- **The widths that survive keep their filenames.** Moving shared params from
+  `transformDefaults` into slot 2 changes nothing on disk: transforms are `ksort`ed before the
+  filename is built, so the same parameters hash the same however they got there. Only the
+  filled-in widths are new files, and any hand-written middle width the ladder no longer
+  contains is left behind as an orphan — `imager-x/clean` sweeps those.
+- **`config/imager-x-generate.php` has to follow.** A generate entry still describing the old
+  ladder keeps generating the old widths while the new ones transform on demand. See
+  `auto-generate.md`.
+- **GraphQL cannot express quick syntax.** A transform consumed by a headless front end needs a
+  named transform; collapsing to an inline ladder in a template does not affect it, but do not
+  move a GraphQL-facing definition out of `imager-x-transforms.php`. See `graphql.md`.
+
+Rewrite the transforms you are already editing or reviewing. Sweeping every template in the
+project is a separate, larger change — offer it, do not do it unasked.
+
 ## Full syntax
 
 Use it whenever you need more than width/ratio/format — different heights per size, per-size
-modes, effects, watermarks, or art-directed crops.
+modes, effects, watermarks, or art-directed crops. If the entries differ only in width,
+collapse them instead (see above).
 
 ```twig
 {% set imgs = craft.imagerx.transformImage(
     image,
     [
-        { width: 400 },
-        { width: 800 },
-        { width: 1200 },
+        { width: 400, height: 400, position: 'top-center' },
+        { width: 800, ratio: 4/3 },
+        { width: 1600, ratio: 16/9 },
     ],
-    { ratio: 16/9, format: 'jpg', jpegQuality: 70 },
-    { fillTransforms: true, fillInterval: 200 }
+    { mode: 'crop', format: 'jpg', jpegQuality: 70 },
+    { allowUpscale: false }
 ) %}
 ```
 
 - **2nd argument** — the transforms. Each entry overrides the defaults.
 - **3rd argument, `transformDefaults`** — merged into *every* transform.
 - **4th argument, `configOverrides`** — Imager X config settings for this call only.
+
+Every entry above varies its shape as well as its width, which is what keeps this out of quick
+syntax. Drop the per-size ratios and it becomes `[400, 1600, { ratio: 16/9, mode: 'crop',
+format: 'jpg', jpegQuality: 70 }]`.
 
 Anything valid in `transformDefaults` is valid inside an individual transform, and vice
 versa. Put what varies per size in the transforms, what is shared in the defaults.
