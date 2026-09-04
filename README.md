@@ -60,9 +60,13 @@ Asking directly works too:
 
 > Make the hero image on the homepage responsive, with AVIF and a JPEG fallback
 
-> Why is this srcset empty? `craft.imagerx.transformImage(image, ['400', '1200'])`
+> I'm migrating from Imgix to Bunny, is there anything in this project that needs to be changed?
 
-> Set up automatic generation for the images volume
+> Set up automatic transform generation
+
+> Audit responsive sizes across all templates and optimize the number of total transforms generated.
+
+> Why is this srcset empty? `craft.imagerx.transformImage(image, ['400', '1200'])`
 
 > Will `cropZoom` work if we switch to the AWS Serverless transformer?
 
