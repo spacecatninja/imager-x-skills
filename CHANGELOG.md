@@ -1,5 +1,14 @@
 # Release Notes for the Imager X Claude skill
 
+## 1.5.0
+
+- Documented the limits added in Imager X 6.3.0. `references/configuration.md` has a new "Limits" section for `remoteMaxFileSize`, `remoteDownloadTimeout`, `maxTransformPixels`, `graphqlMaxTransformSize` and `graphqlAllowCustomTransforms`, including how a transform that hits a limit fails and how `CURLOPT_TIMEOUT` is capped by `remoteDownloadTimeout`.
+- Documented the 6.3.0 validation of inline `@imagerTransform` arguments in `references/graphql.md`, with the accepted values for each argument, and that `imagerTransform(id:)` now applies the schema's volume scope. Both are also listed under Pitfalls.
+- Documented two 6.3.0 changes to `useForNativeTransforms` and `useForCpThumbs` in `references/configuration.md`: the control panel is left to Craft for assets in volumes without public URLs, and with `useForNativeTransforms` on, each size in Craft's `srcset` GraphQL field counts towards `maxGraphqlComplexity`.
+- Documented how Imager X 6.3.0 handles remote images in `references/transform-syntax.md`: downloads must be a raster image or match their URL's extension, they're capped in size and time, and private, reserved and special-purpose IP ranges are refused, including `100.64.0.0/10`. `skipExternalUrlValidation` in `references/configuration.md` notes the CGNAT and Tailscale range.
+- Noted in `references/transform-parameters.md` that from 6.3.0 a non-image `format` throws, and that with Imagick a source with a non-image extension is saved as `jpg` unless `format` is set.
+- Noted in `references/templating-api.md` that from 6.2.0 `getDominantColor()` returns the most common colour, white included, and `getColorPalette()` returns `null` when the image can't be analysed.
+
 ## 1.4.0
 
 - Added a "Prefer quick syntax" section to `SKILL.md` and a rewrite guide to `references/transform-syntax.md`. Quick syntax is now the stated default for a width ladder — in templates, in named transforms, in Power Pack transform arguments and in the generate config — with a collapse table, the list of what does not collapse (a single fixed size, per-size differences, height-driven ladders, non-integer widths, exact intermediate widths), and what actually changes when a full-syntax list is collapsed. The rewrite is scoped to the transforms being edited or reviewed; sweeping a project is offered, not done.

@@ -46,7 +46,9 @@ single-size handle still comes back as a one-element array:
 
 `id` and `url` are mutually exclusive. Passing both is not an error — **`id` wins** and a message
 is logged to the Craft log. The `id` lookup is constrained to `kind('image')`, so a non-image
-asset id resolves to `null`.
+asset id resolves to `null`. From 6.3.0 it also applies the schema's volume scope, the same way
+Craft's own `assets` query does, so an asset in a volume the schema can't read resolves to
+`null` too.
 
 `transform` is read unconditionally by the resolver while the argument itself is nullable, so
 **always pass it**. Omitting it produces a PHP undefined-key error rather than a clean GraphQL
@@ -64,7 +66,9 @@ Treat this as a public, unauthenticated image-fetching endpoint on your site. Ex
 through Imager's URL validation (SSRF checks, redirects re-validated per hop, downloads limited
 to http/https), and `skipExternalUrlValidation` turns all of that off — do not set it on a site
 whose schema is public. Note also that the format gate below only applies to a URL whose path
-carries a file extension.
+carries a file extension. From 6.3.0 a local path or Imager URL passed as `url` must have an
+extension in `safeFileFormats`, and downloads are also capped by `remoteMaxFileSize` and
+`remoteDownloadTimeout`, see `configuration.md`.
 
 ## `imagerTransform` on `AssetInterface`
 
@@ -129,6 +133,22 @@ field.
 
 **A named transform with several sizes collapses to the first.** The directive returns a single
 string, so only `transforms[0]` survives. Use `@imagerSrcset` or the query if you want the ladder.
+
+**From 6.3.0 the inline arguments are validated**, and one invalid value makes the directive
+return `null` with nothing in the response to say why:
+
+| Argument | Accepted |
+|----------|----------|
+| `width`, `height` | 1 up to `graphqlMaxTransformSize` (default `6000`, `0` removes the cap) |
+| `quality` | 0 to 100 |
+| `mode` | `crop`, `croponly`, `fit`, `stretch`, `letterbox` |
+| `interlace` | `none`, `line`, `plane`, `partition` |
+| `position` | `top-left` … `bottom-right`, or two numbers up to 100, `%` optional |
+| `format` | Image formats only, plus `customEncoders` keys, in any case. Used as given, so `JPG` and `jpg` make different files. An empty string is ignored |
+
+`graphqlAllowCustomTransforms: false` makes the directive accept only `handle` and return `null`
+for inline arguments. Set it on a public schema, so clients can only request transforms you
+configured. Named transforms passed through `handle` are not validated or size-capped.
 
 ### The `return` argument
 
@@ -288,3 +308,8 @@ descriptor.
   them, and `dominantColor` refetches the image over HTTP on a cold cache.
 - **No inline access to `ratio`, `pad`, `trim`, `effects`, `watermark`, `frames` or
   `transformerParams`** — those need a named transform.
+- **From 6.3.0, an invalid or oversized inline directive argument returns `null`**, as does any
+  inline argument with `graphqlAllowCustomTransforms: false`. Check `graphqlMaxTransformSize`
+  first when a large size stops working.
+- **From 6.3.0, `imagerTransform(id:)` respects the schema's volume scope**, so a schema without
+  read access to the asset's volume gets `null`.

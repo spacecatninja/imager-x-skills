@@ -141,7 +141,7 @@ padding colour.
 
 | Key | Type | Notes |
 |-----|------|-------|
-| `format` | string | `jpg`, `png`, `gif`, `webp`, `avif`, `jxl`. Omit to keep the source format |
+| `format` | string | `jpg`, `png`, `gif`, `webp`, `avif`, `jxl`. Omit to keep the source format. From 6.3.0 a non-image format throws, and with Imagick a source with a non-image extension, like PDF or SVG, is saved as `jpg` unless `format` is set |
 | `jpegQuality` | int | Default 80 |
 | `webpQuality` | int | Default 80 |
 | `avifQuality` | int | Default 80 |

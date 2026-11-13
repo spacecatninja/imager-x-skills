@@ -120,7 +120,7 @@ since `|srcset` de-duplicates by width. That is correct behaviour, not a bug.
 | `hashRemoteUrl` | `false` | `true` hashes the whole remote URL, `'host'` only the hostname |
 | `useRemoteUrlQueryString` | `false` | Include the query string when identifying a remote file |
 | `useRawExternalUrl` | `true` | Source value; the published default of `false` is stale |
-| `skipExternalUrlValidation` | `false` | |
+| `skipExternalUrlValidation` | `false` | `true` turns off the IP checks for remote hosts. From 6.3.0 they also block `100.64.0.0/10` (CGNAT, Tailscale) |
 
 `filenamePattern` tokens: `{basename}`, `{extension}`, `{fullname}`, `{transformString}`,
 `{transformName}`, `{timestamp}`. `{basename}`, `{fullname}` and `{transformString}` accept a
@@ -264,6 +264,44 @@ in production only, with logs monitored.
 `useForNativeTransforms` is the pragmatic way to bring plugins that call Craft's native
 transform API — and existing templates — onto Imager without rewriting them. `useForCpThumbs`
 is mainly worth it on imgix; with the `craft` transformer it just adds local work.
+
+From 6.3.0 both leave the control panel to Craft for assets in volumes without public URLs, so
+their thumbnails and previews come from Craft's own login-protected transforms instead of public
+files in `imagerSystemPath`. Front-end `getUrl()` with a transform still goes through Imager for
+those assets.
+
+Imager does native transforms right away, inside the request. From 6.3.0, with
+`useForNativeTransforms` on, each size in Craft's `srcset` GraphQL field counts 200 towards
+`maxGraphqlComplexity`, the same as `url` with a transform. A site with a complexity limit that
+queries long `srcset` lists may need to raise it.
+
+## Limits
+
+Added in **6.3.0** and on by default. None of these exist in earlier versions. `0` turns a
+numeric limit off.
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| `remoteMaxFileSize` | `67108864` | Bytes (64 MB). Larger remote downloads are aborted |
+| `remoteDownloadTimeout` | `120` | Seconds, total for one remote download including redirects |
+| `maxTransformPixels` | `100000000` | Pixels (100 MP) in any image the `craft` transformer creates |
+| `graphqlMaxTransformSize` | `6000` | Max `width` and `height` in the `@imagerTransform` directive |
+| `graphqlAllowCustomTransforms` | `true` | `false` limits `@imagerTransform` to `handle` |
+
+A transform that hits one of the first three fails like any other transform error: the
+`fallbackImage` is used if one is set, otherwise it returns `null` with `suppressExceptions` on,
+and throws with it off. The reason is in the Craft log.
+
+`CURLOPT_TIMEOUT` in `curlOptions` (default `30`) still limits each request, but is capped by what
+is left of `remoteDownloadTimeout`. Raising it above 120 has no effect unless
+`remoteDownloadTimeout` is raised too.
+
+`maxTransformPixels` checks the resized image, crops and the `letterbox` and `pad` canvas, not
+the source. An image no larger than the source is always allowed, so format-only, `croponly` and
+downscaling transforms of a very large source still work. The default allows 10000×10000.
+Service transformers don't check it.
+
+The two GraphQL settings are covered in `graphql.md`.
 
 ## The image driver
 

@@ -442,6 +442,14 @@ delete them at the end of the request. Related settings: `hashRemoteUrl`,
 `useRemoteUrlQueryString`, `useRawExternalUrl`, `skipExternalUrlValidation`. See
 `configuration.md`.
 
+From 6.3.0 remote downloads are checked before they are used. A download must be a raster
+image, or the type of file its URL's extension says, like a PDF from a `.pdf` URL, so SVG
+content served from a `.jpg` or extension-less URL fails. Downloads are capped by
+`remoteMaxFileSize` (64 MB) and `remoteDownloadTimeout` (120 seconds in total, including
+redirects), and hosts in private, reserved and special-purpose IP ranges are refused, including
+`100.64.0.0/10`, which CGNAT and Tailscale use. A refused download fails the transform like any
+other error.
+
 Remote transforms are a synchronous HTTP fetch on first request. Never do them in a loop on a
 page that users wait for — pre-generate, or cache the markup.
 

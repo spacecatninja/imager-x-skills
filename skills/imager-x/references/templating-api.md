@@ -162,6 +162,10 @@ getColorPalette(Asset|string $image, int $colorCount = 8, int $quality = 10, str
 `quality` is a sampling step — **lower is more accurate and slower**. `colorValue` is `'hex'`
 or `'rgb'`. `area` restricts sampling to part of the image.
 
+From 6.2.0 `getDominantColor()` returns the most common colour in the image, white included, as
+the average of the matching pixels, and `getColorPalette()` returns `null` when the image can't
+be analysed.
+
 ```twig
 {% set bg = craft.imagerx.getDominantColor(image) %}
 <section style="background-color: {{ bg }}">
